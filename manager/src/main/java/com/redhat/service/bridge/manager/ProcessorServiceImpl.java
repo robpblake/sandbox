@@ -1,7 +1,6 @@
 package com.redhat.service.bridge.manager;
 
 import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -34,14 +33,13 @@ import com.redhat.service.bridge.manager.api.models.requests.ProcessorRequest;
 import com.redhat.service.bridge.manager.api.models.responses.ProcessorResponse;
 import com.redhat.service.bridge.manager.connectors.ConnectorsService;
 import com.redhat.service.bridge.manager.dao.ProcessorDAO;
+import com.redhat.service.bridge.manager.metrics.MetricsOperation;
+import com.redhat.service.bridge.manager.metrics.MetricsService;
 import com.redhat.service.bridge.manager.models.Bridge;
 import com.redhat.service.bridge.manager.models.Processor;
 import com.redhat.service.bridge.manager.providers.InternalKafkaConfigurationProvider;
 import com.redhat.service.bridge.manager.providers.ResourceNamesProvider;
 import com.redhat.service.bridge.manager.workers.WorkManager;
-
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
 
 @ApplicationScoped
 public class ProcessorServiceImpl implements ProcessorService {
@@ -53,9 +51,6 @@ public class ProcessorServiceImpl implements ProcessorService {
 
     @Inject
     BridgesService bridgesService;
-
-    @Inject
-    MeterRegistry meterRegistry;
 
     @Inject
     ObjectMapper mapper;
@@ -77,6 +72,9 @@ public class ProcessorServiceImpl implements ProcessorService {
 
     @Inject
     WorkManager workManager;
+
+    @Inject
+    MetricsService metricsService;
 
     @Transactional
     @Override
@@ -110,9 +108,9 @@ public class ProcessorServiceImpl implements ProcessorService {
         ActionProvider actionProvider = actionProviderFactory.getActionProvider(requestedAction.getType());
 
         BaseAction resolvedAction = actionProviderFactory.resolve(requestedAction,
-                bridge.getId(),
-                customerId,
-                newProcessor.getId());
+                                                                  bridge.getId(),
+                                                                  customerId,
+                                                                  newProcessor.getId());
 
         newProcessor.setName(processorRequest.getName());
         newProcessor.setSubmittedAt(ZonedDateTime.now());
@@ -127,11 +125,12 @@ public class ProcessorServiceImpl implements ProcessorService {
         processorDAO.persist(newProcessor);
         connectorService.createConnectorEntity(resolvedAction, newProcessor, actionProvider);
         workManager.schedule(newProcessor);
+        metricsService.onOperationStart(newProcessor, MetricsOperation.PROVISION);
 
         LOGGER.info("Processor with id '{}' for customer '{}' on bridge '{}' has been marked for creation",
-                newProcessor.getId(),
-                newProcessor.getBridge().getCustomerId(),
-                newProcessor.getBridge().getId());
+                    newProcessor.getId(),
+                    newProcessor.getBridge().getCustomerId(),
+                    newProcessor.getBridge().getId());
 
         return newProcessor;
     }
@@ -142,6 +141,10 @@ public class ProcessorServiceImpl implements ProcessorService {
         return processorDAO.findByShardIdWithReadyDependencies(shardId);
     }
 
+    private MetricsOperation determineRequestedOperation(Processor processor) {
+        return ManagedResourceStatus.PROVISIONING == processor.getStatus() ? MetricsOperation.PROVISION : MetricsOperation.DELETE;
+    }
+
     @Transactional
     @Override
     public Processor updateProcessorStatus(ProcessorDTO processorDTO) {
@@ -149,8 +152,11 @@ public class ProcessorServiceImpl implements ProcessorService {
         Processor p = processorDAO.findById(processorDTO.getId());
         if (p == null) {
             throw new ItemNotFoundException(String.format("Processor with id '%s' does not exist for Bridge '%s' for customer '%s'", bridge.getId(), bridge.getCustomerId(),
-                    processorDTO.getCustomerId()));
+                                                          processorDTO.getCustomerId()));
         }
+
+        MetricsOperation requestedOperation = determineRequestedOperation(p);
+
         p.setStatus(processorDTO.getStatus());
         p.setModifiedAt(ZonedDateTime.now());
 
@@ -161,10 +167,7 @@ public class ProcessorServiceImpl implements ProcessorService {
             p.setPublishedAt(ZonedDateTime.now());
         }
 
-        // Update metrics
-        meterRegistry.counter("manager.processor.status.change",
-                Collections.singletonList(Tag.of("status", processorDTO.getStatus().toString()))).increment();
-
+        metricsService.onOperationComplete(p, requestedOperation);
         return p;
     }
 
@@ -194,13 +197,16 @@ public class ProcessorServiceImpl implements ProcessorService {
 
         // Processor and Connector deletion and related Work creation should always be in the same transaction
         processor.setStatus(ManagedResourceStatus.DEPROVISION);
+        processor.setDeletedAt(ZonedDateTime.now());
+
         connectorService.deleteConnectorEntity(processor);
         workManager.schedule(processor);
+        metricsService.onOperationStart(processor, MetricsOperation.DELETE);
 
         LOGGER.info("Processor with id '{}' for customer '{}' on bridge '{}' has been marked for deletion",
-                processor.getId(),
-                processor.getBridge().getCustomerId(),
-                processor.getBridge().getId());
+                    processor.getId(),
+                    processor.getBridge().getCustomerId(),
+                    processor.getBridge().getId());
     }
 
     private boolean isProcessorDeletable(Processor processor) {
@@ -218,12 +224,12 @@ public class ProcessorServiceImpl implements ProcessorService {
                 internalKafkaConfigurationProvider.getSecurityProtocol(),
                 resourceNamesProvider.getBridgeTopicName(processor.getBridge().getId()));
         return new ProcessorDTO(processor.getId(),
-                processor.getName(),
-                definition,
-                processor.getBridge().getId(),
-                processor.getBridge().getCustomerId(),
-                processor.getStatus(),
-                kafkaConnectionDTO);
+                                processor.getName(),
+                                definition,
+                                processor.getBridge().getId(),
+                                processor.getBridge().getCustomerId(),
+                                processor.getStatus(),
+                                kafkaConnectionDTO);
     }
 
     @Override

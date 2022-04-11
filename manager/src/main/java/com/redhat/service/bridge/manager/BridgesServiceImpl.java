@@ -2,7 +2,6 @@ package com.redhat.service.bridge.manager;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,13 +24,12 @@ import com.redhat.service.bridge.infra.models.dto.ManagedResourceStatus;
 import com.redhat.service.bridge.manager.api.models.requests.BridgeRequest;
 import com.redhat.service.bridge.manager.api.models.responses.BridgeResponse;
 import com.redhat.service.bridge.manager.dao.BridgeDAO;
+import com.redhat.service.bridge.manager.metrics.MetricsOperation;
+import com.redhat.service.bridge.manager.metrics.MetricsService;
 import com.redhat.service.bridge.manager.models.Bridge;
 import com.redhat.service.bridge.manager.providers.InternalKafkaConfigurationProvider;
 import com.redhat.service.bridge.manager.providers.ResourceNamesProvider;
 import com.redhat.service.bridge.manager.workers.WorkManager;
-
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
 
 @ApplicationScoped
 public class BridgesServiceImpl implements BridgesService {
@@ -45,9 +43,6 @@ public class BridgesServiceImpl implements BridgesService {
     ProcessorService processorService;
 
     @Inject
-    MeterRegistry meterRegistry;
-
-    @Inject
     InternalKafkaConfigurationProvider internalKafkaConfigurationProvider;
 
     @Inject
@@ -58,6 +53,9 @@ public class BridgesServiceImpl implements BridgesService {
 
     @Inject
     WorkManager workManager;
+
+    @Inject
+    MetricsService metricsService;
 
     @Override
     @Transactional
@@ -75,6 +73,7 @@ public class BridgesServiceImpl implements BridgesService {
         // Bridge and Work creation should always be in the same transaction
         bridgeDAO.persist(bridge);
         workManager.schedule(bridge);
+        metricsService.onOperationStart(bridge, MetricsOperation.PROVISION);
 
         LOGGER.info("Bridge with id '{}' has been created for customer '{}'", bridge.getId(), bridge.getCustomerId());
 
@@ -127,11 +126,13 @@ public class BridgesServiceImpl implements BridgesService {
         if (!isBridgeDeletable(bridge)) {
             throw new BridgeLifecycleException("Bridge could only be deleted if its in READY/FAILED state.");
         }
-        LOGGER.info("Bridge with id '{}' for customer '{}' has been marked for deletion", bridge.getId(), bridge.getCustomerId());
 
         // Bridge deletion and related Work creation should always be in the same transaction
         bridge.setStatus(ManagedResourceStatus.DEPROVISION);
+        bridge.setDeletedAt(ZonedDateTime.now());
+
         workManager.schedule(bridge);
+        metricsService.onOperationStart(bridge, MetricsOperation.DELETE);
 
         LOGGER.info("Bridge with id '{}' for customer '{}' has been marked for deletion", bridge.getId(), bridge.getCustomerId());
     }
@@ -153,10 +154,16 @@ public class BridgesServiceImpl implements BridgesService {
         return bridgeDAO.findByShardIdWithReadyDependencies(shardId);
     }
 
+    private MetricsOperation determineRequestedOperation(Bridge bridge) {
+        return ManagedResourceStatus.PROVISIONING == bridge.getStatus() ? MetricsOperation.PROVISION : MetricsOperation.DELETE;
+    }
+
     @Transactional
     @Override
     public Bridge updateBridge(BridgeDTO bridgeDTO) {
         Bridge bridge = getBridge(bridgeDTO.getId(), bridgeDTO.getCustomerId());
+        MetricsOperation metricOperation = determineRequestedOperation(bridge);
+
         bridge.setStatus(bridgeDTO.getStatus());
         bridge.setEndpoint(bridgeDTO.getEndpoint());
         bridge.setModifiedAt(ZonedDateTime.now());
@@ -168,10 +175,7 @@ public class BridgesServiceImpl implements BridgesService {
             bridge.setPublishedAt(ZonedDateTime.now());
         }
 
-        // Update metrics
-        meterRegistry.counter("manager.bridge.status.change",
-                Collections.singletonList(Tag.of("status", bridgeDTO.getStatus().toString()))).increment();
-
+        metricsService.onOperationComplete(bridge, metricOperation);
         LOGGER.info("Bridge with id '{}' has been updated for customer '{}'", bridge.getId(), bridge.getCustomerId());
         return bridge;
     }
@@ -206,5 +210,4 @@ public class BridgesServiceImpl implements BridgesService {
         response.setHref(APIConstants.USER_API_BASE_PATH + bridge.getId());
         return response;
     }
-
 }
