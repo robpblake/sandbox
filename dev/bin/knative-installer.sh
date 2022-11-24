@@ -37,6 +37,8 @@ kubectl wait deployment --all --timeout=900s --for=condition=Available -n knativ
 header_text "Initializing Knative Eventing Kafka APIs"
 kubectl apply -f https://github.com/knative-sandbox/eventing-kafka-broker/releases/download/knative-v1.5.8/eventing-kafka-controller.yaml
 kubectl apply -f https://github.com/knative-sandbox/eventing-kafka-broker/releases/download/knative-v1.5.8/eventing-kafka-broker.yaml
+kubectl apply -f https://github.com/knative-sandbox/eventing-kafka-broker/releases/download/knative-v1.5.8/eventing-kafka-sink.yaml
+kubectl apply -f https://github.com/knative-sandbox/eventing-kafka-broker/releases/download/knative-v1.5.8/eventing-kafka-source.yaml
 
 header_text "Waiting for Knative Eventing Kafka to become ready"
 kubectl wait deployment --all --timeout=900s --for=condition=Available -n knative-eventing

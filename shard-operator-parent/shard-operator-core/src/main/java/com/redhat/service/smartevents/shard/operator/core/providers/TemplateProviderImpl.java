@@ -133,7 +133,7 @@ public class TemplateProviderImpl implements TemplateProvider {
         return loadYaml(RequestAuthentication.class, JWT_REQUEST_AUTHENTICATION_PATH);
     }
 
-    private <T> T loadYaml(Class<T> clazz, String yaml) {
+    protected <T> T loadYaml(Class<T> clazz, String yaml) {
         try (InputStream is = TemplateProviderImpl.class.getResourceAsStream(yaml)) {
             return Serialization.unmarshal(is, clazz);
         } catch (IOException ex) {
@@ -141,7 +141,7 @@ public class TemplateProviderImpl implements TemplateProvider {
         }
     }
 
-    private void updateMetadata(HasMetadata resource, ObjectMeta meta, TemplateImportConfig config) {
+    protected void updateMetadata(HasMetadata resource, ObjectMeta meta, TemplateImportConfig config) {
 
         // Set the owning operatorName
         Map<String, String> labels = new LabelsBuilder().buildWithDefaults(config.getOperatorName());
