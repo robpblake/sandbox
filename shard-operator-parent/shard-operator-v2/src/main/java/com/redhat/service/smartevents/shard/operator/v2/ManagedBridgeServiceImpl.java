@@ -1,9 +1,11 @@
 package com.redhat.service.smartevents.shard.operator.v2;
 
-import java.util.Base64;
+import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridge;
+import io.fabric8.kubernetes.client.KubernetesClient;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import java.util.List;
 
 import com.redhat.service.smartevents.infra.v2.api.models.dto.BridgeDTO;
 import com.redhat.service.smartevents.shard.operator.core.providers.GlobalConfigurationsConstants;
@@ -24,13 +26,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 public class ManagedBridgeServiceImpl implements ManagedBridgeService {
 
     @Inject
-    NamespaceProvider namespaceProvider;
-
-    @Inject
     KubernetesClient kubernetesClient;
-
-    @Inject
-    TemplateProvider templateProvider;
 
     @Override
     public void createManagedBridge(BridgeDTO bridgeDTO) {
