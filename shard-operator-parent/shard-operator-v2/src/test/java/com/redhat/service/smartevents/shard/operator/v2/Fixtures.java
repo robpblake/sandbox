@@ -37,6 +37,6 @@ public class Fixtures {
     }
 
     public static ManagedBridge createManagedBridge(BridgeDTO bridgeDTO, String namespace) {
-        return ManagedBridge.fromDTO(bridgeDTO, namespace);
+        return null;
     }
 }
