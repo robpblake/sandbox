@@ -1,39 +1,42 @@
 package com.redhat.service.smartevents.shard.operator.v2;
 
-import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridge;
-import io.fabric8.kubernetes.client.KubernetesClient;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import java.util.List;
-
 import com.redhat.service.smartevents.infra.v2.api.models.dto.BridgeDTO;
 import com.redhat.service.smartevents.shard.operator.core.providers.GlobalConfigurationsConstants;
 import com.redhat.service.smartevents.shard.operator.core.providers.TemplateImportConfig;
 import com.redhat.service.smartevents.shard.operator.core.providers.TemplateProvider;
 import com.redhat.service.smartevents.shard.operator.core.resources.knative.KnativeBroker;
 import com.redhat.service.smartevents.shard.operator.core.utils.LabelsBuilder;
+import com.redhat.service.smartevents.shard.operator.v2.converters.ManagedBridgeConverter;
 import com.redhat.service.smartevents.shard.operator.v2.providers.NamespaceProvider;
 import com.redhat.service.smartevents.shard.operator.v2.resources.KafkaConfigurationSpec;
 import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridge;
 import com.redhat.service.smartevents.shard.operator.v2.resources.TLSSpec;
-
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.KubernetesClient;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import java.util.Base64;
 
 @ApplicationScoped
 public class ManagedBridgeServiceImpl implements ManagedBridgeService {
 
     @Inject
+    NamespaceProvider namespaceProvider;
+
+    @Inject
     KubernetesClient kubernetesClient;
+
+    @Inject
+    TemplateProvider templateProvider;
 
     @Override
     public void createManagedBridge(BridgeDTO bridgeDTO) {
 
         String expectedNamespace = namespaceProvider.getNamespaceName(bridgeDTO.getId());
 
-        ManagedBridge expected = ManagedBridge.fromDTO(bridgeDTO, expectedNamespace);
+        ManagedBridge expected = ManagedBridgeConverter.fromBridgeDTOToManageBridge(bridgeDTO, expectedNamespace);
         namespaceProvider.fetchOrCreateNamespace(expected);
 
         ManagedBridge existing = kubernetesClient
@@ -95,7 +98,7 @@ public class ManagedBridgeServiceImpl implements ManagedBridgeService {
     @Override
     public void deleteManagedBridge(BridgeDTO bridgeDTO) {
 
-        ManagedBridge mb = ManagedBridge.fromDTO(bridgeDTO, null);
+        ManagedBridge mb = ManagedBridgeConverter.fromBridgeDTOToManageBridge(bridgeDTO, null);
 
         /*
          * Pull in the rest of the logic from BridgeIngressServiceImpl to delete the other resources

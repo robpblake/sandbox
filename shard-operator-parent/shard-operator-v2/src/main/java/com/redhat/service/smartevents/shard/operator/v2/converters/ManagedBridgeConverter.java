@@ -3,22 +3,16 @@ package com.redhat.service.smartevents.shard.operator.v2.converters;
 import com.redhat.service.smartevents.infra.core.api.dto.KafkaConnectionDTO;
 import com.redhat.service.smartevents.infra.core.exceptions.definitions.platform.InvalidURLException;
 import com.redhat.service.smartevents.infra.v2.api.models.dto.BridgeDTO;
-import com.redhat.service.smartevents.shard.operator.v2.providers.NamespaceProvider;
 import com.redhat.service.smartevents.shard.operator.v2.resources.*;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
 import java.net.MalformedURLException;
 import java.net.URL;
 
 @ApplicationScoped
 public class ManagedBridgeConverter {
 
-    @Inject
-    NamespaceProvider namespaceProvider;
-
-    public ManagedBridge fromBridgeDTOToManageBridge(BridgeDTO bridgeDTO) {
-        String namespace = namespaceProvider.getNamespaceName(bridgeDTO.getId());
+    public static ManagedBridge fromBridgeDTOToManageBridge(BridgeDTO bridgeDTO, String namespace) {
         try {
             DNSConfigurationSpec dns = DNSConfigurationSpec.Builder.builder()
                     .host(new URL(bridgeDTO.getEndpoint()).getHost())

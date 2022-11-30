@@ -1,7 +1,5 @@
 package com.redhat.service.smartevents.shard.operator.v2.resources;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.redhat.service.smartevents.shard.operator.core.resources.networking.BridgeAddressable;
 import com.redhat.service.smartevents.shard.operator.core.utils.LabelsBuilder;
 import com.redhat.service.smartevents.shard.operator.core.utils.StringUtils;
 import io.fabric8.kubernetes.api.model.Namespaced;
