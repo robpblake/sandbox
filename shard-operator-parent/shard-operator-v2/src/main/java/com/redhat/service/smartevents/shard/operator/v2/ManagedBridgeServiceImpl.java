@@ -11,6 +11,7 @@ import com.redhat.service.smartevents.shard.operator.v2.providers.NamespaceProvi
 import com.redhat.service.smartevents.shard.operator.v2.resources.KafkaConfigurationSpec;
 import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridge;
 import com.redhat.service.smartevents.shard.operator.v2.resources.TLSSpec;
+
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.KubernetesClient;
