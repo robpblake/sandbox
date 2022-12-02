@@ -127,7 +127,7 @@ public class ManagedBridgeControllerTest {
         deployManagedBridgeSecret(managedBridge);
 
         // When
-        UpdateControl<ManagedBridge> updateControl = managedBridgeController.reconcile(managedBridge, null);
+        managedBridgeController.reconcile(managedBridge, null);
 
         // Then
         KnativeBroker knativeBroker = kubernetesClient

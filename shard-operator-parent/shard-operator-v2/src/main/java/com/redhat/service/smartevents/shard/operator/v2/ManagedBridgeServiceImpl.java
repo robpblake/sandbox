@@ -70,16 +70,19 @@ public class ManagedBridgeServiceImpl implements ManagedBridgeService {
                     .withName(expected.getMetadata().getName())
                     .createOrReplace(expected);
 
-            //TODO - Any reason to not move this to the controller?
             createOrUpdateBridgeSecret(expected);
         }
-
-        /*
-         * Send callback to Control Plane for initial creation with initial conditions
-         */
-
     }
 
+    /*
+     * This exists within the ManagedBridgeServiceImpl so that the Secret is created directly from the DTO and sensitive
+     * values are not stored in plaintext/base64 encoding in the ManagedBridge CRD.
+     * 
+     * TODO - discuss if we should instead have a secretRef field in the ManagedBridge CRD to make it easier for people
+     * with little/no knowledge of the system to be able to find all configuration. At the minute there is implicit
+     * knowledge of where the secret will be.
+     * 
+     */
     private void createOrUpdateBridgeSecret(ManagedBridge managedBridge) {
         Secret expected = templateProvider.loadBridgeIngressSecretTemplate(managedBridge, TemplateImportConfig.withDefaults(LabelsBuilder.V2_OPERATOR_NAME));
 
