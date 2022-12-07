@@ -5,6 +5,7 @@ import java.util.Base64;
 
 import javax.inject.Inject;
 
+import io.fabric8.kubernetes.api.model.Namespace;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -91,6 +92,27 @@ public class ManagedBridgeServiceImplTest {
     }
 
     @Test
+    public void deleteManagedBridge() {
+        BridgeDTO bridgeDTO = Fixtures.createBridge(OperationType.CREATE);
+        managedBridgeService.createManagedBridge(bridgeDTO);
+
+        waitUntilManagedBridgeExists(bridgeDTO);
+
+        ManagedBridge mb = fetchManagedBridge(bridgeDTO);
+        assertThat(mb.isMarkedForDeletion()).isFalse();
+
+        Namespace namespace = namespaceProvider.fetchOrCreateNamespace(mb);
+        assertThat(namespace.isMarkedForDeletion()).isFalse();
+
+        managedBridgeService.deleteManagedBridge(bridgeDTO);
+
+        waitUntilManagedBridgeDeleted(bridgeDTO);
+
+        String namespaceName = namespaceProvider.getNamespaceName(bridgeDTO.getId());
+        assertThat(kubernetesClient.namespaces().withName(namespaceName).get()).isNull();
+    }
+
+    @Test
     public void managedBridgeCreationTriggersController() {
         // Given
         BridgeDTO bridgeDTO = Fixtures.createBridge(OperationType.CREATE);
@@ -144,18 +166,31 @@ public class ManagedBridgeServiceImplTest {
 
     private AuthorizationPolicy fetchBridgeIngressAuthorizationPolicy(BridgeDTO dto) {
         return assertV2Labels(kubernetesClient
-                .resources(AuthorizationPolicy.class)
-                .inNamespace(istioGatewayProvider.getIstioGatewayService().getMetadata().getNamespace())
-                .withName(dto.getId())
-                .get());
+                                      .resources(AuthorizationPolicy.class)
+                                      .inNamespace(istioGatewayProvider.getIstioGatewayService().getMetadata().getNamespace())
+                                      .withName(dto.getId())
+                                      .get());
     }
 
     private Secret fetchBridgeSecret(BridgeDTO dto) {
         return assertV2Labels(kubernetesClient
-                .secrets()
-                .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
-                .withName(dto.getId())
-                .get());
+                                      .secrets()
+                                      .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
+                                      .withName(dto.getId())
+                                      .get());
+    }
+
+    private void waitUntilManagedBridgeDeleted(BridgeDTO dto) {
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> {
+                    ManagedBridge mb = kubernetesClient.resources(ManagedBridge.class)
+                            .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
+                            .withName(dto.getId())
+                            .get();
+                    assertThat(mb).isNull();
+                });
     }
 
     private void waitUntilManagedBridgeExists(BridgeDTO dto) {
@@ -170,33 +205,33 @@ public class ManagedBridgeServiceImplTest {
 
     private ConfigMap fetchBridgeConfigMap(BridgeDTO dto) {
         return assertV2Labels(kubernetesClient
-                .configMaps()
-                .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
-                .withName(dto.getId())
-                .get());
+                                      .configMaps()
+                                      .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
+                                      .withName(dto.getId())
+                                      .get());
     }
 
     private KnativeBroker fetchBridgeKnativeBroker(BridgeDTO dto) {
         return assertV2Labels(kubernetesClient
-                .resources(KnativeBroker.class)
-                .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
-                .withName(dto.getId())
-                .get());
+                                      .resources(KnativeBroker.class)
+                                      .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
+                                      .withName(dto.getId())
+                                      .get());
     }
 
     private Secret fetchManagedBridgeSecret(BridgeDTO dto) {
         return assertV2Labels(kubernetesClient
-                .resources(Secret.class)
-                .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
-                .withName(dto.getId())
-                .get());
+                                      .resources(Secret.class)
+                                      .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
+                                      .withName(dto.getId())
+                                      .get());
     }
 
     private ManagedBridge fetchManagedBridge(BridgeDTO dto) {
         return assertV2Labels(kubernetesClient
-                .resources(ManagedBridge.class)
-                .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
-                .withName(dto.getId())
-                .get());
+                                      .resources(ManagedBridge.class)
+                                      .inNamespace(namespaceProvider.getNamespaceName(dto.getId()))
+                                      .withName(dto.getId())
+                                      .get());
     }
 }

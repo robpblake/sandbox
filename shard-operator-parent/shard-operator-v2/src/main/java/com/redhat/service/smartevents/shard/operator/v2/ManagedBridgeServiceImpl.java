@@ -115,16 +115,37 @@ public class ManagedBridgeServiceImpl implements ManagedBridgeService {
         }
     }
 
+    private String createManagedBridgeName(BridgeDTO bridgeDTO) {
+        return bridgeDTO.getId();
+    }
+
+    private ManagedBridge getManagedBridge(BridgeDTO bridgeDTO) {
+        return kubernetesClient.resources(ManagedBridge.class)
+                .inNamespace(namespaceProvider.getNamespaceName(bridgeDTO.getId()))
+                .withName(createManagedBridgeName(bridgeDTO))
+                .get();
+    }
+
     @Override
     public void deleteManagedBridge(BridgeDTO bridgeDTO) {
 
-        ManagedBridge mb = ManagedBridgeConverter.fromBridgeDTOToManageBridge(bridgeDTO, null);
+        ManagedBridge mb = getManagedBridge(bridgeDTO);
+        if (mb != null) {
+            Boolean delete = kubernetesClient.resources(ManagedBridge.class)
+                    .inNamespace(mb.getMetadata().getNamespace())
+                    .delete(mb);
+
+            if (delete) {
+                LOGGER.info("Marked ManagedBridge with name '{}' in Namespace '{}' for deletion.", mb.getMetadata().getName(), mb.getMetadata().getNamespace());
+            } else {
+                LOGGER.warn("Failed to issue delete command for ManagedBridge with name '{}' and Kubernetes resource UID '{}'. Will retry on next reconcile loop.", mb.getMetadata().getName(), mb.getMetadata().getUid());
+            }
+        }
 
         /*
-         * Pull in the rest of the logic from BridgeIngressServiceImpl to delete the other resources
+            Mark the namespace for deletion in any scenario.
          */
-
-        namespaceProvider.deleteNamespace(mb);
+        namespaceProvider.deleteNamespace(bridgeDTO.getId());
     }
 
     @Override

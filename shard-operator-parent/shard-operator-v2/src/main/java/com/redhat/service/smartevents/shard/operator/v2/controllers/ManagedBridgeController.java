@@ -15,6 +15,9 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import com.redhat.service.smartevents.infra.core.models.ManagedResourceStatus;
+import com.redhat.service.smartevents.shard.operator.core.providers.IstioGatewayProvider;
+import com.redhat.service.smartevents.shard.operator.core.resources.istio.authorizationpolicy.AuthorizationPolicy;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +74,9 @@ public class ManagedBridgeController implements Reconciler<ManagedBridge>,
 
     @Inject
     OperatorMetricsService metricsService;
+
+    @Inject
+    IstioGatewayProvider istioGatewayProvider;
 
     @Override
     public UpdateControl<ManagedBridge> reconcile(ManagedBridge managedBridge, Context context) {
@@ -171,7 +177,25 @@ public class ManagedBridgeController implements Reconciler<ManagedBridge>,
 
     @Override
     public DeleteControl cleanup(ManagedBridge resource, Context context) {
-        return null;
+        LOGGER.info("Deleted BridgeIngress: '{}' in namespace '{}'", resource.getMetadata().getName(), resource.getMetadata().getNamespace());
+
+        // Linked resources are automatically deleted except for Authorization Policy and the ingress due to https://github.com/istio/istio/issues/37221
+
+        // Since the authorizationPolicy has to be in the istio-system namespace due to https://github.com/istio/istio/issues/37221
+        // we can not set the owner reference. We have to delete the resource manually.
+        kubernetesClient.resources(AuthorizationPolicy.class)
+                .inNamespace(istioGatewayProvider.getIstioGatewayService().getMetadata().getNamespace()) // https://github.com/istio/istio/issues/37221
+                .withName(resource.getMetadata().getName())
+                .delete();
+
+        // Since the ingress for the gateway has to be in the istio-system namespace
+        // we can not set the owner reference. We have to delete the resource manually.
+        networkingService.delete(resource.getMetadata().getName(), istioGatewayProvider.getIstioGatewayService().getMetadata().getNamespace());
+
+        metricsService.onOperationComplete(resource, MetricsOperation.CONTROLLER_RESOURCE_DELETE);
+        //TODO - callback to the control plane for deletes to be added in
+
+        return DeleteControl.defaultDelete();
     }
 
     @Override

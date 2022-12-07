@@ -16,7 +16,7 @@ public interface NamespaceProvider {
 
     Namespace fetchOrCreateNamespace(ManagedBridge managedBridge);
 
-    void deleteNamespace(ManagedBridge managedBridge);
+    void deleteNamespace(String bridgeId);
 
     default String getNamespaceName(String bridgeId) {
         final String sanitizedName = KubernetesResourceUtil.sanitizeName(NAMESPACE_NAME_PREFIX + bridgeId).toLowerCase(Locale.ROOT);

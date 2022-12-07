@@ -98,7 +98,6 @@ public class NamespaceProviderImplTest {
         assertThat(labels).containsEntry(LabelsBuilder.BRIDGE_ID_LABEL, mb.getSpec().getId());
         assertThat(labels).containsEntry(LabelsBuilder.BRIDGE_NAME_LABEL, mb.getSpec().getName());
         assertThat(labels).containsEntry(LabelsBuilder.CUSTOMER_ID_LABEL, mb.getSpec().getCustomerId());
-
     }
 
     @Test
@@ -114,7 +113,7 @@ public class NamespaceProviderImplTest {
         assertThat(namespace).isNotNull();
         mb.getMetadata().setNamespace(namespace.getMetadata().getName());
 
-        namespaceProvider.deleteNamespace(mb);
+        namespaceProvider.deleteNamespace(mb.getSpec().getId());
         assertThat(kubernetesClient.namespaces().withName(expectedName).get()).isNull();
     }
 
@@ -125,6 +124,6 @@ public class NamespaceProviderImplTest {
         String expectedName = namespaceProvider.getNamespaceName(mb.getSpec().getId());
         assertThat(kubernetesClient.namespaces().withName(expectedName).get()).isNull();
 
-        namespaceProvider.deleteNamespace(mb);
+        namespaceProvider.deleteNamespace(mb.getSpec().getId());
     }
 }

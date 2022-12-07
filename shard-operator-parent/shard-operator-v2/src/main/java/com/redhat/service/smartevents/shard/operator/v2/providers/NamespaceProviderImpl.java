@@ -68,12 +68,16 @@ public class NamespaceProviderImpl implements NamespaceProvider {
     }
 
     @Override
-    public void deleteNamespace(ManagedBridge managedBridge) {
-        String namespaceName = managedBridge.getMetadata().getNamespace();
+    public void deleteNamespace(String bridgeId) {
+        String namespaceName = getNamespaceName(bridgeId);
         Namespace namespace = kubernetesClient.namespaces().withName(namespaceName).get();
         if (namespace != null) {
-            kubernetesClient.namespaces().delete(namespace);
-            LOGGER.info("Marked Namespace '{}' for ManagedBridge with id '{}' for deletion.", namespaceName, managedBridge.getSpec().getId());
+            Boolean delete = kubernetesClient.namespaces().delete(namespace);
+            if (delete) {
+                LOGGER.info("Marked Namespace '{}' for ManagedBridge with id '{}' for deletion.", namespaceName, bridgeId);
+            } else {
+                LOGGER.warn("Delete command for Namespace '{}' indicated a failure, so the namespace may not be deleted. Will retry on next reconcile loop.");
+            }
         }
     }
 }

@@ -146,4 +146,11 @@ public class ManagedBridgeControllerTest {
 
     }
 
+
+
+    @Test
+    public void deleteManagedBridge() {
+
+    }
+
 }
