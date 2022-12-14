@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.service.smartevents.shard.operator.core.resources.Condition;
 import com.redhat.service.smartevents.shard.operator.core.resources.ConditionStatus;
+import com.redhat.service.smartevents.shard.operator.core.resources.istio.authorizationpolicy.AuthorizationPolicy;
 import com.redhat.service.smartevents.shard.operator.core.resources.knative.KnativeBroker;
 import com.redhat.service.smartevents.shard.operator.core.resources.knative.KnativeBrokerConditionTypeConstants;
 import com.redhat.service.smartevents.shard.operator.core.resources.knative.KnativeBrokerStatus;
@@ -49,6 +50,7 @@ public class V2KubernetesResourcePatcher {
     private static final String FAILURE_REASON = "You were too optimistic";
 
     public void cleanUp() {
+        kubernetesClient.resources(AuthorizationPolicy.class).inAnyNamespace().delete();
         kubernetesClient.resources(KnativeBroker.class).inAnyNamespace().delete();
         kubernetesClient.resources(ManagedBridge.class).inAnyNamespace().delete();
         kubernetesClient.secrets().inAnyNamespace().delete();

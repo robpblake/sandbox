@@ -10,12 +10,16 @@ import javax.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.service.smartevents.infra.core.metrics.MetricsOperation;
 import com.redhat.service.smartevents.infra.v2.api.models.OperationType;
 import com.redhat.service.smartevents.infra.v2.api.models.dto.BridgeDTO;
+import com.redhat.service.smartevents.shard.operator.core.metrics.OperatorMetricsService;
 import com.redhat.service.smartevents.shard.operator.core.providers.GlobalConfigurationsConstants;
 import com.redhat.service.smartevents.shard.operator.core.resources.ConditionStatus;
 import com.redhat.service.smartevents.shard.operator.core.resources.ConditionTypeConstants;
+import com.redhat.service.smartevents.shard.operator.core.resources.istio.authorizationpolicy.AuthorizationPolicy;
 import com.redhat.service.smartevents.shard.operator.core.resources.knative.KnativeBroker;
+import com.redhat.service.smartevents.shard.operator.v2.ManagedBridgeService;
 import com.redhat.service.smartevents.shard.operator.v2.providers.NamespaceProvider;
 import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridge;
 import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridgeStatus;
@@ -26,11 +30,14 @@ import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.javaoperatorsdk.operator.api.reconciler.DeleteControl;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.mockito.InjectMock;
 import io.quarkus.test.kubernetes.client.WithOpenShiftTestServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 
 @QuarkusTest
 @WithOpenShiftTestServer
@@ -47,6 +54,12 @@ public class ManagedBridgeControllerTest {
 
     @Inject
     V2KubernetesResourcePatcher kubernetesResourcePatcher;
+
+    @Inject
+    ManagedBridgeService managedBridgeService;
+
+    @InjectMock
+    OperatorMetricsService operatorMetricsService;
 
     @BeforeEach
     public void beforeEach() {
@@ -143,14 +156,23 @@ public class ManagedBridgeControllerTest {
         assertThat(knativeBroker.getSpec().getConfig().getName()).isNotNull();
         assertThat(knativeBroker.getSpec().getConfig().getNamespace()).isNotNull();
         assertThat(knativeBroker.getSpec().getConfig().getKind()).isNotNull();
-
     }
-
-
 
     @Test
     public void deleteManagedBridge() {
+        ManagedBridge mb = createManagedBridge();
+        AuthorizationPolicy authorizationPolicy = managedBridgeService.fetchOrCreateBridgeAuthorizationPolicy(mb, "foo");
+        assertThat(authorizationPolicy).isNotNull();
 
+        DeleteControl deleteControl = managedBridgeController.cleanup(mb, null);
+        assertThat(deleteControl).isNotNull();
+
+        authorizationPolicy = kubernetesClient.resources(AuthorizationPolicy.class)
+                .inNamespace(authorizationPolicy.getMetadata().getNamespace())
+                .withName(authorizationPolicy.getMetadata().getName())
+                .get();
+
+        assertThat(authorizationPolicy).isNull();
+        verify(operatorMetricsService).onOperationComplete(mb, MetricsOperation.CONTROLLER_RESOURCE_DELETE);
     }
-
 }

@@ -7,8 +7,8 @@ import com.redhat.service.smartevents.infra.core.api.dto.KafkaConnectionDTO;
 import com.redhat.service.smartevents.infra.core.exceptions.definitions.platform.InvalidURLException;
 import com.redhat.service.smartevents.infra.v2.api.models.dto.BridgeDTO;
 import com.redhat.service.smartevents.shard.operator.v2.resources.DNSConfigurationSpec;
-import com.redhat.service.smartevents.shard.operator.v2.resources.KNativeBrokerConfigurationSpec;
 import com.redhat.service.smartevents.shard.operator.v2.resources.KafkaConfigurationSpec;
+import com.redhat.service.smartevents.shard.operator.v2.resources.KnativeBrokerConfigurationSpec;
 import com.redhat.service.smartevents.shard.operator.v2.resources.ManagedBridge;
 import com.redhat.service.smartevents.shard.operator.v2.resources.TLSSpec;
 
@@ -39,7 +39,7 @@ public class ManagedBridgeConverter {
                     .withOwner(bridgeDTO.getOwner())
                     .withBridgeId(bridgeDTO.getId())
                     .withDnsConfigurationSpec(dns)
-                    .withKnativeBrokerConfigurationSpec(new KNativeBrokerConfigurationSpec(kafkaConfigurationSpec))
+                    .withKnativeBrokerConfigurationSpec(new KnativeBrokerConfigurationSpec(kafkaConfigurationSpec))
                     .build();
         } catch (MalformedURLException e) {
             throw new InvalidURLException("Could not extract host from " + bridgeDTO.getEndpoint());

@@ -83,10 +83,10 @@ public class ManagedBridgeServiceImpl implements ManagedBridgeService {
     private void createOrUpdateBridgeSecret(ManagedBridge managedBridge) {
         Secret expected = templateProvider.loadBridgeIngressSecretTemplate(managedBridge, TemplateImportConfig.withDefaults(LabelsBuilder.V2_OPERATOR_NAME));
 
-        KafkaConfigurationSpec kafkaConfiguration = managedBridge.getSpec().getkNativeBrokerConfiguration().getKafkaConfiguration();
+        KafkaConfigurationSpec kafkaConfiguration = managedBridge.getSpec().getKnativeBrokerConfiguration().getKafkaConfiguration();
 
         expected.getData().put(GlobalConfigurationsConstants.KNATIVE_KAFKA_BOOTSTRAP_SERVERS_SECRET,
-                Base64.getEncoder().encodeToString(managedBridge.getSpec().getkNativeBrokerConfiguration().getKafkaConfiguration().getBootstrapServers().getBytes()));
+                Base64.getEncoder().encodeToString(managedBridge.getSpec().getKnativeBrokerConfiguration().getKafkaConfiguration().getBootstrapServers().getBytes()));
         expected.getData().put(GlobalConfigurationsConstants.KNATIVE_KAFKA_USER_SECRET, Base64.getEncoder().encodeToString(kafkaConfiguration.getUser().getBytes()));
         expected.getData().put(GlobalConfigurationsConstants.KNATIVE_KAFKA_PASSWORD_SECRET, Base64.getEncoder().encodeToString(kafkaConfiguration.getPassword().getBytes()));
         expected.getData().put(GlobalConfigurationsConstants.KNATIVE_KAFKA_PROTOCOL_SECRET, Base64.getEncoder().encodeToString(kafkaConfiguration.getSecurityProtocol().getBytes()));
@@ -138,12 +138,13 @@ public class ManagedBridgeServiceImpl implements ManagedBridgeService {
             if (delete) {
                 LOGGER.info("Marked ManagedBridge with name '{}' in Namespace '{}' for deletion.", mb.getMetadata().getName(), mb.getMetadata().getNamespace());
             } else {
-                LOGGER.warn("Failed to issue delete command for ManagedBridge with name '{}' and Kubernetes resource UID '{}'. Will retry on next reconcile loop.", mb.getMetadata().getName(), mb.getMetadata().getUid());
+                LOGGER.warn("Failed to issue delete command for ManagedBridge with name '{}' and Kubernetes resource UID '{}'. Will retry on next reconcile loop.", mb.getMetadata().getName(),
+                        mb.getMetadata().getUid());
             }
         }
 
         /*
-            Mark the namespace for deletion in any scenario.
+         * Mark the namespace for deletion in any scenario.
          */
         namespaceProvider.deleteNamespace(bridgeDTO.getId());
     }

@@ -15,9 +15,6 @@ import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import com.redhat.service.smartevents.infra.core.models.ManagedResourceStatus;
-import com.redhat.service.smartevents.shard.operator.core.providers.IstioGatewayProvider;
-import com.redhat.service.smartevents.shard.operator.core.resources.istio.authorizationpolicy.AuthorizationPolicy;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,8 +23,10 @@ import com.redhat.service.smartevents.infra.core.metrics.MetricsOperation;
 import com.redhat.service.smartevents.shard.operator.core.metrics.OperatorMetricsService;
 import com.redhat.service.smartevents.shard.operator.core.networking.NetworkResource;
 import com.redhat.service.smartevents.shard.operator.core.networking.NetworkingService;
+import com.redhat.service.smartevents.shard.operator.core.providers.IstioGatewayProvider;
 import com.redhat.service.smartevents.shard.operator.core.resources.Condition;
 import com.redhat.service.smartevents.shard.operator.core.resources.ConditionTypeConstants;
+import com.redhat.service.smartevents.shard.operator.core.resources.istio.authorizationpolicy.AuthorizationPolicy;
 import com.redhat.service.smartevents.shard.operator.core.resources.knative.KnativeBroker;
 import com.redhat.service.smartevents.shard.operator.core.utils.EventSourceFactory;
 import com.redhat.service.smartevents.shard.operator.core.utils.LabelsBuilder;
@@ -177,7 +176,6 @@ public class ManagedBridgeController implements Reconciler<ManagedBridge>,
 
     @Override
     public DeleteControl cleanup(ManagedBridge resource, Context context) {
-        LOGGER.info("Deleted BridgeIngress: '{}' in namespace '{}'", resource.getMetadata().getName(), resource.getMetadata().getNamespace());
 
         // Linked resources are automatically deleted except for Authorization Policy and the ingress due to https://github.com/istio/istio/issues/37221
 
@@ -193,8 +191,9 @@ public class ManagedBridgeController implements Reconciler<ManagedBridge>,
         networkingService.delete(resource.getMetadata().getName(), istioGatewayProvider.getIstioGatewayService().getMetadata().getNamespace());
 
         metricsService.onOperationComplete(resource, MetricsOperation.CONTROLLER_RESOURCE_DELETE);
-        //TODO - callback to the control plane for deletes to be added in
+        //TODO - callback to the control plane for deletes to be added in https://issues.redhat.com/browse/MGDOBR-1267
 
+        LOGGER.info("Requested delete of resources for ManagedBridge: '{}' in namespace '{}'", resource.getMetadata().getName(), resource.getMetadata().getNamespace());
         return DeleteControl.defaultDelete();
     }
 

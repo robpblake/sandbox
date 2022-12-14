@@ -10,7 +10,7 @@ public class ManagedBridgeSpec {
 
     private String customerId;
 
-    private KNativeBrokerConfigurationSpec kNativeBrokerConfiguration = new KNativeBrokerConfigurationSpec();
+    private KnativeBrokerConfigurationSpec knativeBrokerConfiguration = new KnativeBrokerConfigurationSpec();
 
     private DNSConfigurationSpec dnsConfiguration = new DNSConfigurationSpec();
 
@@ -48,12 +48,12 @@ public class ManagedBridgeSpec {
         this.name = name;
     }
 
-    public KNativeBrokerConfigurationSpec getkNativeBrokerConfiguration() {
-        return kNativeBrokerConfiguration;
+    public KnativeBrokerConfigurationSpec getKnativeBrokerConfiguration() {
+        return knativeBrokerConfiguration;
     }
 
-    public void setkNativeBrokerConfiguration(KNativeBrokerConfigurationSpec kNativeBrokerConfiguration) {
-        this.kNativeBrokerConfiguration = kNativeBrokerConfiguration;
+    public void setKnativeBrokerConfiguration(KnativeBrokerConfigurationSpec knativeBrokerConfiguration) {
+        this.knativeBrokerConfiguration = knativeBrokerConfiguration;
     }
 
     public DNSConfigurationSpec getDnsConfiguration() {
@@ -73,12 +73,12 @@ public class ManagedBridgeSpec {
             return false;
         }
         ManagedBridgeSpec that = (ManagedBridgeSpec) o;
-        return Objects.equals(id, that.id) && Objects.equals(customerId, that.customerId) && Objects.equals(kNativeBrokerConfiguration, that.kNativeBrokerConfiguration)
+        return Objects.equals(id, that.id) && Objects.equals(customerId, that.customerId) && Objects.equals(knativeBrokerConfiguration, that.knativeBrokerConfiguration)
                 && Objects.equals(dnsConfiguration, that.dnsConfiguration) && Objects.equals(owner, that.owner);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, customerId, kNativeBrokerConfiguration, dnsConfiguration, owner);
+        return Objects.hash(id, customerId, knativeBrokerConfiguration, dnsConfiguration, owner);
     }
 }
